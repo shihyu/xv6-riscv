@@ -1,3 +1,38 @@
+# Default target: show help
+.DEFAULT_GOAL := help
+
+.PHONY: help
+help:
+	@echo "xv6 RISC-V Makefile 可用目標："
+	@echo ""
+	@echo "編譯和執行："
+	@echo "  make qemu           - 在 QEMU 中運行 xv6（帶圖形輸出）"
+	@echo "  make qemu-nox       - 在 QEMU 中運行 xv6（無 GUI，文本模式）"
+	@echo ""
+	@echo "調試："
+	@echo "  make qemu-gdb       - 啟動 QEMU 調試模式（需另開終端執行 make run-gdb）"
+	@echo "  make qemu-nox-gdb   - 啟動 QEMU 調試模式（無 GUI 模式）"
+	@echo "  make run-gdb        - 連接 gdb 並在 main 設置斷點"
+	@echo ""
+	@echo "測試："
+	@echo "  make test           - 執行 usertests (快速模式)"
+	@echo "  make test-full      - 執行完整 usertests"
+	@echo ""
+	@echo "其他："
+	@echo "  make build          - 編譯內核和文件系統"
+	@echo "  make clean          - 清理編譯產物"
+	@echo "  make help           - 顯示此幫助信息"
+	@echo ""
+	@echo "環境變數："
+	@echo "  CPUS=n              - 指定 CPU 核心數（默認: 3）"
+	@echo ""
+	@echo "使用範例："
+	@echo "  make qemu-nox"
+	@echo "  CPUS=4 make qemu-nox"
+	@echo "  make qemu-gdb &"
+	@echo "  make run-gdb"
+	@echo "  make test"
+
 K=kernel
 U=user
 
@@ -175,15 +210,38 @@ QEMUOPTS += -device virtio-blk-device,drive=x0,bus=virtio-mmio-bus.0
 qemu: check-qemu-version $K/kernel fs.img
 	$(QEMU) $(QEMUOPTS)
 
+qemu-nox: check-qemu-version $K/kernel fs.img
+	$(QEMU) $(QEMUOPTS) -nographic
+
 .gdbinit: .gdbinit.tmpl-riscv
 	sed "s/:1234/:$(GDBPORT)/" < $^ > $@
 
-qemu-gdb: $K/kernel .gdbinit fs.img
+qemu-gdb: check-qemu-version $K/kernel .gdbinit fs.img
 	@echo "*** Now run 'gdb' in another window." 1>&2
 	$(QEMU) $(QEMUOPTS) -S $(QEMUGDB)
 
+qemu-nox-gdb: check-qemu-version $K/kernel .gdbinit fs.img
+	@echo "*** Now run 'gdb' in another window." 1>&2
+	$(QEMU) $(QEMUOPTS) -nographic -S $(QEMUGDB)
+
+run-gdb: $K/kernel .gdbinit
+	gdb-multiarch -q -nx $K/kernel -x .gdbinit
+
 print-gdbport:
 	@echo $(GDBPORT)
+
+# Test targets
+.PHONY: build test test-full
+build: $K/kernel fs.img
+	@echo "Build complete: kernel and fs.img ready"
+
+test: build
+	@echo "Running quick usertests..."
+	timeout 300 python3 test-xv6.py -q usertests
+
+test-full: build
+	@echo "Running full usertests..."
+	timeout 600 python3 test-xv6.py usertests
 
 QEMU_VERSION := $(shell $(QEMU) --version | head -n 1 | sed -E 's/^QEMU emulator version ([0-9]+\.[0-9]+)\..*/\1/')
 check-qemu-version:
