@@ -10,7 +10,3 @@ set pagination off
 handle SIGALRM nostop noprint pass
 handle SIGCHLD nostop noprint pass
 break main
-commands
-  silent
-  continue
-end

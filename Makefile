@@ -225,7 +225,7 @@ qemu-nox-gdb: check-qemu-version $K/kernel .gdbinit fs.img
 	$(QEMU) $(QEMUOPTS) -nographic -S $(QEMUGDB)
 
 run-gdb: $K/kernel .gdbinit
-	gdb-multiarch -q -nx $K/kernel -x .gdbinit
+	gdb-multiarch -q -nx $K/kernel -x .gdbinit -ex "continue"
 
 print-gdbport:
 	@echo $(GDBPORT)
